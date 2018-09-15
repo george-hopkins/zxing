@@ -98,7 +98,6 @@ public class Detector {
     Version provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
     int modulesBetweenFPCenters = provisionalVersion.getDimensionForVersion() - 7;
 
-    AlignmentPattern alignmentPattern = null;
     // Anything above version 1 has an alignment pattern
     if (provisionalVersion.getAlignmentPatternCenters().length > 0) {
 
@@ -115,11 +114,14 @@ public class Detector {
       // Kind of arbitrary -- expand search radius before giving up
       for (int i = 4; i <= 16; i <<= 1) {
         try {
-          alignmentPattern = findAlignmentInRegion(moduleSize,
-              estAlignmentX,
-              estAlignmentY,
-              i);
-          break;
+          AlignmentPattern alignmentPattern = findAlignmentInRegion(moduleSize, estAlignmentX,
+              estAlignmentY, i);
+          PerspectiveTransform transform = createTransform(topLeft, topRight, bottomLeft,
+              alignmentPattern, dimension);
+          BitMatrix bits = sampleGrid(image, transform, dimension);
+          ResultPoint[] points = new ResultPoint[] { bottomLeft, topLeft, topRight,
+              alignmentPattern };
+          return new DetectorResult(bits, points);
         } catch (NotFoundException re) {
           // try next round
         }
@@ -127,17 +129,10 @@ public class Detector {
       // If we didn't find alignment pattern... well try anyway without it
     }
 
-    PerspectiveTransform transform =
-        createTransform(topLeft, topRight, bottomLeft, alignmentPattern, dimension);
-
+    PerspectiveTransform transform = createTransform(topLeft, topRight, bottomLeft, null,
+        dimension);
     BitMatrix bits = sampleGrid(image, transform, dimension);
-
-    ResultPoint[] points;
-    if (alignmentPattern == null) {
-      points = new ResultPoint[]{bottomLeft, topLeft, topRight};
-    } else {
-      points = new ResultPoint[]{bottomLeft, topLeft, topRight, alignmentPattern};
-    }
+    ResultPoint[] points = new ResultPoint[] { bottomLeft, topLeft, topRight };
     return new DetectorResult(bits, points);
   }
 

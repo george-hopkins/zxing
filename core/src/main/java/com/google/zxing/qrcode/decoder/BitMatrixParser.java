@@ -137,6 +137,14 @@ final class BitMatrixParser {
     throw FormatException.getFormatInstance();
   }
 
+  Version readVersionModel1() throws FormatException {
+    if (parsedVersion != null) {
+      return parsedVersion;
+    }
+    parsedVersion = Version.getVersionModel1ForDimension(bitMatrix.getWidth());
+    return parsedVersion;
+  }
+
   private int copyBit(int i, int j, int versionBits) {
     boolean bit = mirror ? bitMatrix.get(j, i) : bitMatrix.get(i, j);
     return bit ? (versionBits << 1) | 0x1 : versionBits << 1;
@@ -205,7 +213,92 @@ final class BitMatrixParser {
   }
 
   /**
-   * Revert the mask removal done while reading the code words. The bit matrix should revert to its original state.
+   * <p>
+   * Reads the bits in the {@link BitMatrix} representing the finder pattern in the correct order in
+   * order to reconstruct the codewords bytes contained within the QR Code Model 1.
+   * </p>
+   *
+   * @return bytes encoded within the QR Code Model 1
+   * @throws FormatException
+   *           if the exact number of bytes expected is not read
+   */
+  byte[] readCodewordsModel1() throws FormatException {
+
+    FormatInformation formatInfo = readFormatInformation();
+    Version version = readVersionModel1();
+
+    // Get the data mask for the format used in this QR Code. This will exclude
+    // some bits from reading as we wind through the bit matrix.
+    DataMask dataMask = DataMask.values()[formatInfo.getDataMask()];
+    int dimension = bitMatrix.getHeight();
+    dataMask.unmaskBitMatrix(bitMatrix, dimension);
+
+    byte[] result = new byte[version.getTotalCodewords()];
+    int resultOffset = 0;
+
+    int columns = dimension / 4 + 1 + 2;
+    for (int j = 0; j < columns; j++) {
+      if (j <= 1) { // vertical symbols on the right side
+        int rows = (dimension - 8) / 4;
+        for (int i = 0; i < rows; i++) {
+          int x = dimension - (j + 1) * 2;
+          int y = dimension - (i + 1) * 4;
+          byte d = 0;
+          for (int b = 0; b < 8; b++) {
+            if (bitMatrix.get(x + b % 2, y + (b / 2))) {
+              d |= 1 << b;
+            }
+          }
+          if (j == 0 && i % 2 == 0 && i > 0 && i < rows - 1) { // extension
+            continue;
+          }
+          result[resultOffset++] = d;
+        }
+      } else if (columns - j <= 4) { // vertical symbols on the left side
+        int rows = (dimension - 16) / 4;
+        for (int i = 0; i < rows; i++) {
+          int x = (columns - j - 1) * 2 + (columns - j == 4 ? 1 : 0);
+          int y = dimension - 8 - (i + 1) * 4;
+          byte d = 0;
+          for (int b = 0; b < 8; b++) {
+            if (bitMatrix.get(x + b % 2, y + (b / 2))) {
+              d |= 1 << b;
+            }
+          }
+          result[resultOffset++] = d;
+        }
+      } else { // horizontal symbols
+        int rows = dimension / 2;
+        for (int i = 0; i < rows; i++) {
+          if (j == 2 && i >= rows - 4) { // alignment
+            continue;
+          }
+          if (i == 0 && j % 2 == 1) { // extension
+            continue;
+          }
+          int x = dimension - 2 * 2 - (j + 1 - 2) * 4;
+          int y = dimension - (i + 1) * 2 - (i >= rows - 3 ? 1 : 0); // timing
+          byte d = 0;
+          for (int b = 0; b < 8; b++) {
+            if (bitMatrix.get(x + b % 4, y + (b / 4))) {
+              d |= 1 << b;
+            }
+          }
+          result[resultOffset++] = d;
+        }
+      }
+    }
+
+    result[0] &= 0xf; // ignore corner
+    if (resultOffset != version.getTotalCodewords()) {
+      throw FormatException.getFormatInstance();
+    }
+    return result;
+  }
+
+  /**
+   * Revert the mask removal done while reading the code words. The bit matrix should revert to its
+   * original state.
    */
   void remask() {
     if (parsedFormatInfo == null) {

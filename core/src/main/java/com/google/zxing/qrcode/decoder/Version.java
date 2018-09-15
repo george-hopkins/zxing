@@ -41,6 +41,7 @@ public final class Version {
   };
 
   private static final Version[] VERSIONS = buildVersions();
+  private static final Version[] VERSIONS_MODEL1 = buildVersionsModel1();
 
   private final int versionNumber;
   private final int[] alignmentPatternCenters;
@@ -105,6 +106,17 @@ public final class Version {
       throw new IllegalArgumentException();
     }
     return VERSIONS[versionNumber - 1];
+  }
+
+  public static Version getVersionModel1ForDimension(int dimension) throws FormatException {
+    if (dimension % 4 != 1) {
+      throw FormatException.getFormatInstance();
+    }
+    int versionNumber = (dimension - 17) / 4;
+    if (versionNumber < 1 || versionNumber > VERSIONS_MODEL1.length) {
+      throw FormatException.getFormatInstance();
+    }
+    return VERSIONS_MODEL1[versionNumber - 1];
   }
 
   static Version decodeVersionInformation(int versionBits) {
@@ -572,6 +584,31 @@ public final class Version {
                 new ECB(34, 25)),
             new ECBlocks(30, new ECB(20, 15),
                 new ECB(61, 16)))
+    };
+  }
+
+  private static Version[] buildVersionsModel1() {
+    return new Version[] {
+        new Version(1, new int[] {},
+            new ECBlocks(7, new ECB(1, 19)),
+            new ECBlocks(10, new ECB(1, 16)),
+            new ECBlocks(13, new ECB(1, 13)),
+            new ECBlocks(17, new ECB(1, 9))),
+        new Version(2, new int[] {},
+            new ECBlocks(10, new ECB(1, 36)),
+            new ECBlocks(16, new ECB(1, 30)),
+            new ECBlocks(22, new ECB(1, 24)),
+            new ECBlocks(30, new ECB(1, 16))),
+        new Version(3, new int[] {},
+            new ECBlocks(15, new ECB(1, 57)),
+            new ECBlocks(28, new ECB(1, 44)),
+            new ECBlocks(36, new ECB(1, 36)),
+            new ECBlocks(48, new ECB(1, 24))),
+        new Version(4, new int[] {},
+            new ECBlocks(20, new ECB(1, 80)),
+            new ECBlocks(40, new ECB(1, 60)),
+            new ECBlocks(50, new ECB(1, 50)),
+            new ECBlocks(66, new ECB(1, 34)))
     };
   }
 

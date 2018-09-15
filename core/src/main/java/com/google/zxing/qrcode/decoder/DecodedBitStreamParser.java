@@ -49,15 +49,18 @@ final class DecodedBitStreamParser {
   private DecodedBitStreamParser() {
   }
 
-  static DecoderResult decode(byte[] bytes,
-                              Version version,
-                              ErrorCorrectionLevel ecLevel,
-                              Map<DecodeHintType,?> hints) throws FormatException {
+  static DecoderResult decode(byte[] bytes, boolean model1, Version version,
+      ErrorCorrectionLevel ecLevel, Map<DecodeHintType, ?> hints) throws FormatException {
     BitSource bits = new BitSource(bytes);
     StringBuilder result = new StringBuilder(50);
     List<byte[]> byteSegments = new ArrayList<>(1);
     int symbolSequence = -1;
     int parityData = -1;
+
+    // First codeword of model 1 is just 4 bits
+    if (model1) {
+      bits.readBits(4);
+    }
 
     try {
       CharacterSetECI currentCharacterSetECI = null;

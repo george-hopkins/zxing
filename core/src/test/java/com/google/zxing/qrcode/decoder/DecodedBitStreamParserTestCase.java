@@ -35,8 +35,22 @@ public final class DecodedBitStreamParserTestCase extends Assert {
     builder.write(0xF1, 8);
     builder.write(0xF2, 8);
     builder.write(0xF3, 8);
-    String result = DecodedBitStreamParser.decode(builder.toByteArray(),
-        Version.getVersionForNumber(1), null, null).getText();
+    String result = DecodedBitStreamParser
+        .decode(builder.toByteArray(), false, Version.getVersionForNumber(1), null, null).getText();
+    assertEquals("\u00f1\u00f2\u00f3", result);
+  }
+
+  @Test
+  public void testSimpleByteModeModel1() throws Exception {
+    BitSourceBuilder builder = new BitSourceBuilder();
+    builder.write(0x00, 4); // extension corner (ignored)
+    builder.write(0x04, 4); // byte mode
+    builder.write(0x03, 8); // 3 bytes
+    builder.write(0xF1, 8);
+    builder.write(0xF2, 8);
+    builder.write(0xF3, 8);
+    String result = DecodedBitStreamParser.decode(builder.toByteArray(), true,
+        Version.getVersionModel1ForDimension(21), null, null).getText();
     assertEquals("\u00f1\u00f2\u00f3", result);
   }
 
@@ -49,8 +63,8 @@ public final class DecodedBitStreamParserTestCase extends Assert {
     builder.write(0xA2, 8);
     builder.write(0xA3, 8);
     builder.write(0xD0, 8);
-    String result = DecodedBitStreamParser.decode(builder.toByteArray(),
-        Version.getVersionForNumber(1), null, null).getText();
+    String result = DecodedBitStreamParser
+        .decode(builder.toByteArray(), false, Version.getVersionForNumber(1), null, null).getText();
     assertEquals("\uff61\uff62\uff63\uff90", result);
   }
 
@@ -64,8 +78,8 @@ public final class DecodedBitStreamParserTestCase extends Assert {
     builder.write(0xA1, 8);
     builder.write(0xA2, 8);
     builder.write(0xA3, 8);
-    String result = DecodedBitStreamParser.decode(builder.toByteArray(),
-        Version.getVersionForNumber(1), null, null).getText();
+    String result = DecodedBitStreamParser
+        .decode(builder.toByteArray(), false, Version.getVersionForNumber(1), null, null).getText();
     assertEquals("\u00ed\u00f3\u00fa", result);
   }
 
@@ -76,8 +90,8 @@ public final class DecodedBitStreamParserTestCase extends Assert {
     builder.write(0x01, 4); // Subset 1 = GB2312 encoding
     builder.write(0x01, 8); // 1 characters
     builder.write(0x03C1, 13);
-    String result = DecodedBitStreamParser.decode(builder.toByteArray(),
-        Version.getVersionForNumber(1), null, null).getText();
+    String result = DecodedBitStreamParser
+        .decode(builder.toByteArray(), false, Version.getVersionForNumber(1), null, null).getText();
     assertEquals("\u963f", result);
   }
 
@@ -89,8 +103,8 @@ public final class DecodedBitStreamParserTestCase extends Assert {
     builder.write(0x01, 8); // 1 characters
     // A5A2 (U+30A2) => A5A2 - A1A1 = 401, 4*60 + 01 = 0181
     builder.write(0x0181, 13);
-    String result = DecodedBitStreamParser.decode(builder.toByteArray(),
-        Version.getVersionForNumber(1), null, null).getText();
+    String result = DecodedBitStreamParser
+        .decode(builder.toByteArray(), false, Version.getVersionForNumber(1), null, null).getText();
     assertEquals("\u30a2", result);
   }
 

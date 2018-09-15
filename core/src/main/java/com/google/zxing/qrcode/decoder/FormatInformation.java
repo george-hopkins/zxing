@@ -28,6 +28,8 @@ final class FormatInformation {
 
   private static final int FORMAT_INFO_MASK_QR = 0x5412;
 
+  private static final int FORMAT_INFO_MASK_QR_MODEL1 = 0x2825;
+
   /**
    * See ISO 18004:2006, Annex C, Table C.1
    */
@@ -68,12 +70,14 @@ final class FormatInformation {
 
   private final ErrorCorrectionLevel errorCorrectionLevel;
   private final byte dataMask;
+  private final boolean model1;
 
-  private FormatInformation(int formatInfo) {
+  private FormatInformation(int formatInfo, boolean model1) {
     // Bits 3,4
     errorCorrectionLevel = ErrorCorrectionLevel.forBits((formatInfo >> 3) & 0x03);
     // Bottom 3 bits
     dataMask = (byte) (formatInfo & 0x07);
+    this.model1 = model1;
   }
 
   static int numBitsDiffering(int a, int b) {
@@ -88,18 +92,27 @@ final class FormatInformation {
    *  if doesn't seem to match any known pattern
    */
   static FormatInformation decodeFormatInformation(int maskedFormatInfo1, int maskedFormatInfo2) {
-    FormatInformation formatInfo = doDecodeFormatInformation(maskedFormatInfo1, maskedFormatInfo2);
+    FormatInformation formatInfo = doDecodeFormatInformation(maskedFormatInfo1, maskedFormatInfo2,
+        false);
     if (formatInfo != null) {
       return formatInfo;
     }
-    // Should return null, but, some QR codes apparently
-    // do not mask this info. Try again by actually masking the pattern
-    // first
-    return doDecodeFormatInformation(maskedFormatInfo1 ^ FORMAT_INFO_MASK_QR,
-                                     maskedFormatInfo2 ^ FORMAT_INFO_MASK_QR);
+    // should return null, but, some QR codes apparently
+    // do not mask this info. Try again with double masking (= no masking)
+    formatInfo = doDecodeFormatInformation(maskedFormatInfo1 ^ FORMAT_INFO_MASK_QR,
+        maskedFormatInfo2 ^ FORMAT_INFO_MASK_QR, false);
+    if (formatInfo != null) {
+      return formatInfo;
+    }
+
+    // try model 1
+    return doDecodeFormatInformation(
+        maskedFormatInfo1 ^ FORMAT_INFO_MASK_QR_MODEL1 ^ FORMAT_INFO_MASK_QR,
+        maskedFormatInfo2 ^ FORMAT_INFO_MASK_QR_MODEL1 ^ FORMAT_INFO_MASK_QR, true);
   }
 
-  private static FormatInformation doDecodeFormatInformation(int maskedFormatInfo1, int maskedFormatInfo2) {
+  private static FormatInformation doDecodeFormatInformation(int maskedFormatInfo1,
+      int maskedFormatInfo2, boolean model1) {
     // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
     int bestDifference = Integer.MAX_VALUE;
     int bestFormatInfo = 0;
@@ -107,7 +120,7 @@ final class FormatInformation {
       int targetInfo = decodeInfo[0];
       if (targetInfo == maskedFormatInfo1 || targetInfo == maskedFormatInfo2) {
         // Found an exact match
-        return new FormatInformation(decodeInfo[1]);
+        return new FormatInformation(decodeInfo[1], model1);
       }
       int bitsDifference = numBitsDiffering(maskedFormatInfo1, targetInfo);
       if (bitsDifference < bestDifference) {
@@ -126,7 +139,7 @@ final class FormatInformation {
     // Hamming distance of the 32 masked codes is 7, by construction, so <= 3 bits
     // differing means we found a match
     if (bestDifference <= 3) {
-      return new FormatInformation(bestFormatInfo);
+      return new FormatInformation(bestFormatInfo, model1);
     }
     return null;
   }
@@ -137,6 +150,10 @@ final class FormatInformation {
 
   byte getDataMask() {
     return dataMask;
+  }
+
+  boolean isModel1() {
+    return model1;
   }
 
   @Override

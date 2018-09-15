@@ -96,9 +96,6 @@ public final class Decoder {
       // Will be attempting a mirrored reading of the version and format info.
       parser.setMirror(true);
 
-      // Preemptively read the version.
-      parser.readVersion();
-
       // Preemptively read the format information.
       parser.readFormatInformation();
 
@@ -127,13 +124,16 @@ public final class Decoder {
     }
   }
 
-  private DecoderResult decode(BitMatrixParser parser, Map<DecodeHintType,?> hints)
+  private DecoderResult decode(BitMatrixParser parser, Map<DecodeHintType, ?> hints)
       throws FormatException, ChecksumException {
-    Version version = parser.readVersion();
-    ErrorCorrectionLevel ecLevel = parser.readFormatInformation().getErrorCorrectionLevel();
+    FormatInformation formatInformation = parser.readFormatInformation();
+    Version version = formatInformation.isModel1() ? parser.readVersionModel1()
+        : parser.readVersion();
+    ErrorCorrectionLevel ecLevel = formatInformation.getErrorCorrectionLevel();
 
     // Read codewords
-    byte[] codewords = parser.readCodewords();
+    byte[] codewords = formatInformation.isModel1() ? parser.readCodewordsModel1()
+        : parser.readCodewords();
     // Separate into data blocks
     DataBlock[] dataBlocks = DataBlock.getDataBlocks(codewords, version, ecLevel);
 
@@ -156,7 +156,7 @@ public final class Decoder {
     }
 
     // Decode the contents of that stream of bytes
-    return DecodedBitStreamParser.decode(resultBytes, version, ecLevel, hints);
+    return DecodedBitStreamParser.decode(resultBytes, formatInformation.isModel1(), version, ecLevel, hints);
   }
 
   /**
